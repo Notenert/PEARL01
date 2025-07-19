@@ -1,0 +1,2264 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hotel Management System - Admin</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    
+    <style>
+        /* General body styling */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f4f7f6;
+        }
+
+        /* Sidebar styling */
+        #sidebar-wrapper {
+            min-height: 100vh;
+            width: 250px;
+            transition: margin-left 0.25s ease-in-out;
+            flex-shrink: 0; /* Prevent sidebar from shrinking */
+            background-color: #2c3e50 !important; /* Darker blue-gray */
+            color: #ecf0f1; /* Light text */
+        }
+        #sidebar-wrapper .sidebar-heading {
+            background-color: #34495e; /* Slightly lighter dark blue-gray */
+            color: #ecf0f1;
+            font-size: 1.25rem;
+            font-weight: bold;
+        }
+        #sidebar-wrapper .list-group-item {
+            color: #ecf0f1;
+            background-color: #2c3e50;
+            border: none;
+            padding: 1rem 1.5rem;
+            transition: background-color 0.2s ease, color 0.2s ease;
+        }
+        #sidebar-wrapper .list-group-item:hover,
+        #sidebar-wrapper .list-group-item.active {
+            background-color: #3498db; /* Blue for active/hover */
+            color: #fff;
+        }
+
+        #page-content-wrapper {
+            width: 100%;
+            flex-grow: 1; /* Allow content to take remaining space */
+            background-color: #f4f7f6;
+        }
+        /* Hide content sections by default, show active one */
+        .content-section {
+            display: none;
+        }
+        .active-section {
+            display: block;
+        }
+
+        /* Room status colors as specified */
+        .status-pill {
+            padding: 0.2rem 0.6rem;
+            border-radius: 15px;
+            font-weight: bold;
+            color: #fff;
+            display: inline-block;
+            min-width: 80px; /* Ensure consistent width for pills */
+            text-align: center;
+        }
+        .status-available { /* ห้องว่าง / ไม่มีสี (ใช้สีเทาอ่อนเพื่อให้เห็นชัด) */
+            background-color: #e0e0e0; /* Light gray */
+            color: #333;
+            border: 1px solid #ccc;
+        }
+        .status-booked { /* ห้องจอง / สีแดง */
+            background-color: #e74c3c; /* Flat UI Red */
+        }
+        .status-checked-out { /* ห้องเช็คเอาท์ / สีส้ม */
+            background-color: #f39c12; /* Flat UI Orange */
+        }
+        .status-occupied { /* ห้องมีผู้เข้าพัก / สีเขียว */
+            background-color: #27ae60; /* Flat UI Green */
+        }
+        .status-damaged { /* ห้องชำรุด / สีเหลือง */
+            background-color: #f1c40f; /* Flat UI Yellow */
+            color: #333; /* Darker text for better contrast on yellow */
+        }
+        .status-cancelled { /* For cancelled bookings */
+            background-color: #95a5a6; /* Flat UI Gray */
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            #sidebar-wrapper {
+                margin-left: -250px;
+            }
+            #wrapper.toggled #sidebar-wrapper {
+                margin-left: 0;
+            }
+            #page-content-wrapper {
+                min-width: 100vw;
+            }
+        }
+
+        /* Room Map Specific Styles */
+        .room-map-container {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            background-color: #f9f9f9;
+            margin-top: 20px;
+            overflow-x: auto; /* Allow horizontal scrolling for wide maps */
+        }
+
+        .room-row {
+            display: flex;
+            flex-wrap: wrap; /* Allow rooms to wrap on smaller screens */
+            gap: 10px;
+            justify-content: center; /* Center rooms in a row */
+        }
+
+        .room-box {
+            width: 80px; /* Fixed width for room boxes */
+            height: 60px; /* Fixed height for room boxes */
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 0.9em;
+            cursor: pointer;
+            transition: background-color 0.3s ease, transform 0.2s ease;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            color: #333; /* Default text color */
+        }
+
+        .room-box:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+        }
+
+        /* Room status colors for map boxes */
+        .room-box.status-available {
+            background-color: #e9ecef; /* Light gray for available */
+            color: #333;
+        }
+        .room-box.status-booked {
+            background-color: #dc3545; /* Red for booked */
+            color: #fff;
+        }
+        .room-box.status-checked-out {
+            background-color: #fd7e14; /* Orange for checked-out */
+            color: #fff;
+        }
+        .room-box.status-occupied {
+            background-color: #198754; /* Green for occupied */
+            color: #fff;
+        }
+        .room-box.status-damaged {
+            background-color: #ffc107; /* Yellow for damaged */
+            color: #333;
+        }
+        .room-box.status-unknown { /* Fallback for unknown status */
+            background-color: #6c757d; /* Grey */
+            color: #fff;
+        }
+
+        /* Login Page Styles */
+        #login-page {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background: linear-gradient(to right, #3498db, #8e44ad); /* Blue to Purple gradient */
+            background-size: cover;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1050; /* Above modals */
+        }
+        #login-card {
+            background-color: rgba(255, 255, 255, 0.95);
+            padding: 40px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            width: 100%;
+            max-width: 400px;
+            text-align: center;
+        }
+        #login-card h2 {
+            color: #34495e;
+            margin-bottom: 30px;
+            font-weight: bold;
+        }
+        #login-card .form-control {
+            border-radius: 8px;
+            padding: 12px 15px;
+            border: 1px solid #ddd;
+        }
+        #login-card .btn-primary {
+            background-color: #3498db;
+            border-color: #3498db;
+            border-radius: 8px;
+            padding: 12px 20px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            transition: background-color 0.2s ease, border-color 0.2s ease;
+        }
+        #login-card .btn-primary:hover {
+            background-color: #2980b9;
+            border-color: #2980b9;
+        }
+        #login-error-message {
+            color: #e74c3c;
+            margin-top: 15px;
+            font-weight: bold;
+        }
+        .hidden {
+            display: none !important;
+        }
+        /* Password toggle button styling */
+        .password-input-group {
+            position: relative;
+        }
+        .password-toggle {
+            position: absolute;
+            right: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            cursor: pointer;
+            color: #6c757d;
+            z-index: 10; /* Ensure it's above the input */
+        }
+        .password-toggle:hover {
+            color: #343a40;
+        }
+
+        /* Booking Calendar Styles */
+        .booking-calendar-container {
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin-top: 20px;
+            background-color: #fff;
+        }
+        .calendar-header, .calendar-row {
+            display: flex;
+            border-bottom: 1px solid #e9ecef;
+        }
+        .calendar-header .date-cell, .calendar-row .room-label, .calendar-row .date-cell {
+            flex-shrink: 0;
+            width: 80px; /* Fixed width for date cells */
+            padding: 8px;
+            text-align: center;
+            border-right: 1px solid #e9ecef;
+        }
+        .calendar-header .date-cell {
+            font-weight: bold;
+            background-color: #f8f9fa;
+        }
+        .calendar-header .room-label-placeholder {
+            width: 120px; /* Width for room labels */
+            flex-shrink: 0;
+            border-right: 1px solid #e9ecef;
+            background-color: #f8f9fa;
+        }
+        .calendar-row .room-label {
+            width: 120px; /* Width for room labels */
+            font-weight: bold;
+            text-align: left;
+            background-color: #f8f9fa;
+            border-right: 1px solid #e9ecef;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .calendar-row .date-cell {
+            position: relative;
+        }
+        .booking-bar {
+            position: absolute;
+            top: 50%;
+            left: 0;
+            transform: translateY(-50%);
+            height: 80%;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8em;
+            color: #fff;
+            padding: 0 5px;
+            box-sizing: border-box;
+            cursor: pointer;
+            overflow: hidden;
+            white-space: nowrap;
+            text-overflow: ellipsis;
+            z-index: 1; /* Ensure bars are above cell borders */
+        }
+    </style>
+</head>
+<body>
+    <!-- Login Page -->
+    <div id="login-page">
+        <div id="login-card">
+            <h2>เข้าสู่ระบบ</h2>
+            <form id="loginForm">
+                <div class="mb-3">
+                    <input type="text" class="form-control" id="usernameInput" placeholder="ชื่อผู้ใช้" required>
+                </div>
+                <div class="mb-3 password-input-group">
+                    <input type="password" class="form-control" id="passwordInput" placeholder="รหัสผ่าน" required>
+                    <span class="password-toggle" id="togglePassword">
+                        <i class="fas fa-eye"></i>
+                    </span>
+                </div>
+                <div class="d-grid gap-2">
+                    <button type="button" class="btn btn-primary" id="adminLoginBtn">เข้าสู่ระบบในฐานะแอดมิน</button>
+                    <button type="button" class="btn btn-secondary" id="employeeLoginBtn">เข้าสู่ระบบในฐานะพนักงาน</button>
+                </div>
+                <div id="login-error-message" class="mt-3 hidden">ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง</div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Main Application Wrapper -->
+    <div class="d-flex hidden" id="wrapper">
+        <!-- Sidebar -->
+        <div class="bg-dark text-white" id="sidebar-wrapper">
+            <div class="sidebar-heading p-4 border-bottom border-secondary">ระบบจัดการห้องพัก</div>
+            <div class="list-group list-group-flush">
+                <a href="#" class="list-group-item list-group-item-action bg-dark text-white active" data-target="dashboard">
+                    <i class="fas fa-tachometer-alt me-2"></i> แดชบอร์ด
+                </a>
+                <a href="#" class="list-group-item list-group-item-action bg-dark text-white" data-target="room-management" id="roomManagementLink">
+                    <i class="fas fa-bed me-2"></i> จัดการห้องพัก
+                </a>
+                <a href="#" class="list-group-item list-group-item-action bg-dark text-white" data-target="booking-management">
+                    <i class="fas fa-calendar-alt me-2"></i> จัดการการจอง
+                </a>
+                <a href="#" class="list-group-item list-group-item-action bg-dark text-white" data-target="customer-data">
+                    <i class="fas fa-users me-2"></i> ข้อมูลลูกค้า
+                </a>
+                <a href="#" class="list-group-item list-group-item-action bg-dark text-white" data-target="system-settings" id="systemSettingsLink">
+                    <i class="fas fa-cog me-2"></i> ตั้งค่าระบบ
+                </a>
+                <a href="#" class="list-group-item list-group-item-action bg-dark text-white" id="logoutButton">
+                    <i class="fas fa-sign-out-alt me-2"></i> ออกจากระบบ
+                </a>
+            </div>
+        </div>
+        <!-- /#sidebar-wrapper -->
+
+        <!-- Page Content -->
+        <div id="page-content-wrapper" class="container-fluid p-4">
+            <!-- Toggle button for small screens -->
+            <button class="btn btn-primary mb-4 d-md-none" id="menu-toggle">
+                <i class="fas fa-bars"></i> เมนู
+            </button>
+            
+            <!-- Dashboard Section -->
+            <div id="dashboard" class="content-section active-section">
+                <h2>ภาพรวมแดชบอร์ด</h2>
+                <div id="room-summary" class="row">
+                    <!-- Dashboard cards will be inserted here by JavaScript -->
+                </div>
+                <hr>
+                <h3>แผนที่ห้องพัก</h3>
+                <div id="room-map" class="room-map-container">
+                    <!-- Room map visualization will be inserted here by JavaScript -->
+                </div>
+            </div>
+
+            <!-- Room Management Section -->
+            <div id="room-management" class="content-section">
+                <h2>จัดการห้องพัก</h2>
+                <div class="d-flex justify-content-between mb-3 flex-wrap">
+                    <button class="btn btn-success mb-2 mb-md-0" id="addRoomBtn">
+                        <i class="fas fa-plus-circle"></i> เพิ่มห้องพักใหม่
+                    </button>
+                    <input type="text" class="form-control w-100 w-md-25" id="searchRoom" placeholder="ค้นหาหมายเลขห้อง...">
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>หมายเลขห้อง</th>
+                                <th>ประเภท</th>
+                                <th>ราคา (ต่อคืน)</th>
+                                <th>ประเภทเตียง</th>
+                                <th>จำนวนผู้เข้าพักสูงสุด</th>
+                                <th>สถานะ</th>
+                                <th>การดำเนินการ</th>
+                            </tr>
+                        </thead>
+                        <tbody id="room-list">
+                            <!-- Room data will be loaded here -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Booking Management Section -->
+            <div id="booking-management" class="content-section">
+                <h2>จัดการการจอง</h2>
+                <div class="d-flex justify-content-between mb-3 flex-wrap">
+                    <button class="btn btn-primary mb-2 mb-md-0" id="newBookingBtn">
+                        <i class="fas fa-plus-circle"></i> สร้างรายการจองใหม่
+                    </button>
+                </div>
+                <div class="input-group mb-3">
+                    <input type="text" class="form-control" id="searchBooking" placeholder="ค้นหา ID การจอง หรือ ชื่อลูกค้า...">
+                    <button class="btn btn-outline-secondary" type="button" id="clearSearchBooking">
+                        <i class="fas fa-times"></i> ล้าง
+                    </button>
+                </div>
+                
+                <h3>รายการจองทั้งหมด</h3> 
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover">
+                        <thead>
+                            <tr>
+                                <th>ID การจอง</th>
+                                <th>ลูกค้า</th>
+                                <th>เบอร์ห้อง</th>
+                                <th>เช็คอิน</th>
+                                <th>เช็คเอาท์</th>
+                                <th>สถานะ</th>
+                                <th>การดำเนินการ</th>
+                            </tr>
+                        </thead>
+                        <tbody id="booking-list">
+                            <!-- Booking data for current day will be loaded here -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <hr>
+                <h3>แผนผังการจองห้องพัก</h3>
+                <div id="booking-calendar-view" class="booking-calendar-container">
+                    <!-- Booking calendar will be rendered here -->
+                </div>
+            </div>
+
+            <!-- Customer Data Section -->
+            <div id="customer-data" class="content-section">
+                <h2>ข้อมูลลูกค้า</h2>
+                <div class="input-group mb-3">
+                    <input type="text" class="form-control" id="searchCustomer" placeholder="ค้นหา ID การจอง หรือ ชื่อลูกค้า...">
+                    <button class="btn btn-outline-secondary" type="button" id="clearSearchCustomer">
+                        <i class="fas fa-times"></i> ล้าง
+                    </button>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover">
+                        <thead>
+                            <tr>
+                                <th>ID การจอง</th>
+                                <th>ชื่อลูกค้า</th>
+                                <th>อีเมล์</th>
+                                <th>เบอร์ห้อง</th>
+                                <th>เช็คอิน</th>
+                                <th>เช็คเอาท์</th>
+                                <th>วิธีการชำระเงิน</th>
+                                <th>ยอดรวมทั้งหมด</th>
+                                <th>สถานะ</th>
+                            </tr>
+                        </thead>
+                        <tbody id="customer-list">
+                            <!-- Customer data based on status (Checked-in/Cancelled) -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- System Settings Section -->
+            <div id="system-settings" class="content-section">
+                <h2>ตั้งค่าระบบ</h2>
+                <div class="d-flex justify-content-between mb-3 flex-wrap">
+                    <button class="btn btn-success mb-2 mb-md-0" id="addUserBtn">
+                        <i class="fas fa-user-plus"></i> เพิ่มผู้ใช้ใหม่
+                    </button>
+                    <input type="text" class="form-control w-100 w-md-25" id="searchUser" placeholder="ค้นหาชื่อผู้ใช้...">
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover">
+                        <thead>
+                            <tr>
+                                <th>ชื่อผู้ใช้</th>
+                                <th>รหัสผ่าน</th>
+                                <th>บทบาท</th>
+                                <th>การดำเนินการ</th>
+                            </tr>
+                        </thead>
+                        <tbody id="user-list">
+                            <!-- User data will be loaded here -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </div>
+        <!-- /#page-content-wrapper -->
+    </div>
+
+    <!-- Modals -->
+
+    <!-- Room Add/Edit Modal -->
+    <div class="modal fade" id="roomModal" tabindex="-1" aria-labelledby="roomModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="roomModalLabel">แก้ไข/เพิ่มห้องพัก</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="roomForm">
+                        <input type="hidden" id="roomId">
+                        <div class="mb-3">
+                            <label for="roomNumber" class="form-label">หมายเลขห้อง</label>
+                            <input type="text" class="form-control" id="roomNumber" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="roomType" class="form-label">ประเภทห้อง</label>
+                            <input type="text" class="form-control" id="roomType" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="roomPrice" class="form-label">ราคา (ต่อคืน)</label>
+                            <input type="number" class="form-control" id="roomPrice" required min="0">
+                        </div>
+                        <div class="mb-3">
+                            <label for="roomBeds" class="form-label">ประเภทเตียง</label>
+                            <input type="text" class="form-control" id="roomBeds" placeholder="เช่น 1 King Bed, 2 Single Beds">
+                        </div>
+                        <div class="mb-3">
+                            <label for="roomMaxGuests" class="form-label">จำนวนผู้เข้าพักสูงสุด</label>
+                            <input type="number" class="form-control" id="roomMaxGuests" required min="1">
+                        </div>
+                        <div class="mb-3">
+                            <label for="roomStatus" class="form-label">สถานะ</label>
+                            <select class="form-select" id="roomStatus" required>
+                                <option value="available">ว่าง</option>
+                                <option value="booked">จอง</option>
+                                <option value="occupied">มีผู้เข้าพัก</option>
+                                <option value="damaged">ชำรุด</option>
+                                <option value="checked-out">เช็คเอาท์</option>
+                            </select>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ยกเลิก</button>
+                    <button type="button" class="btn btn-primary" id="saveRoomButton">บันทึก</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- New Booking Modal -->
+    <div class="modal fade" id="newBookingModal" tabindex="-1" aria-labelledby="newBookingModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="newBookingModalLabel">สร้างรายการจองใหม่</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="newBookingForm">
+                        <!-- Added input for Booking ID -->
+                        <div class="mb-3">
+                            <label for="newBookingId" class="form-label">เลข ID การจอง</label>
+                            <input type="text" class="form-control" id="newBookingId" required placeholder="เช่น BKG004">
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="customerName" class="form-label">ชื่อลูกค้า</label>
+                                <input type="text" class="form-control" id="customerName" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="customerEmail" class="form-label">อีเมล์ลูกค้า</label>
+                                <input type="email" class="form-control" id="customerEmail">
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-4 mb-3">
+                                <label for="adults" class="form-label">ผู้ใหญ่</label>
+                                <input type="number" class="form-control" id="adults" min="0" value="1" required>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label for="children" class="form-label">เด็ก</label>
+                                <input type="number" class="form-control" id="children" min="0" value="0">
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label for="infants" class="form-label">ทารก</label>
+                                <input type="number" class="form-control" id="infants" min="0" value="0">
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="bookingRoomNumber" class="form-label">เลือกเบอร์ห้อง</label>
+                            <select class="form-select" id="bookingRoomNumber" required>
+                                <!-- Room options will be loaded by JS -->
+                            </select>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="checkInDate" class="form-label">วันเช็คอิน</label>
+                                <input type="date" class="form-control" id="checkInDate" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="checkOutDate" class="form-label">วันเช็คเอาท์</label>
+                                <input type="date" class="form-control" id="checkOutDate" required>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ยกเลิก</button>
+                    <button type="button" class="btn btn-primary" id="saveBookingButton">บันทึก</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Check-in Confirmation Modal -->
+    <div class="modal fade" id="checkInConfirmModal" tabindex="-1" aria-labelledby="checkInConfirmModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="checkInConfirmModalLabel">ยืนยันการเช็คอิน</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p>กรุณากรอกข้อมูลการชำระเงิน:</p>
+                    <div class="mb-3">
+                        <label for="billNumberInput" class="form-label">หมายเลขบิล</label>
+                        <input type="text" class="form-control" id="billNumberInput" placeholder="หมายเลขบิล" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="paymentMethodSelect" class="form-label">วิธีการชำระเงิน</label>
+                        <select class="form-select" id="paymentMethodSelect" required>
+                            <option value="">เลือกวิธีการชำระเงิน</option>
+                            <option value="cash">เงินสด</option>
+                            <option value="card">บัตรเครดิต/เดบิต</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="totalAmountInput" class="form-label">ยอดรวมทั้งหมด (บาท)</label>
+                        <input type="number" class="form-control" id="totalAmountInput" placeholder="ยอดรวม" required min="0">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ยกเลิก</button>
+                    <button type="button" class="btn btn-primary" id="confirmCheckInButton">ยืนยัน</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- User Add/Edit Modal -->
+    <div class="modal fade" id="userModal" tabindex="-1" aria-labelledby="userModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="userModalLabel">แก้ไข/เพิ่มผู้ใช้</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="userForm">
+                        <input type="hidden" id="originalUsername"> <!-- To store original username for edits -->
+                        <div class="mb-3">
+                            <label for="newUsername" class="form-label">ชื่อผู้ใช้</label>
+                            <input type="text" class="form-control" id="newUsername" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="newPassword" class="form-label">รหัสผ่าน</label>
+                            <input type="password" class="form-control" id="newPassword" placeholder="เว้นว่างไว้หากไม่ต้องการเปลี่ยนรหัสผ่าน">
+                        </div>
+                        <div class="mb-3">
+                            <label for="userRole" class="form-label">บทบาท</label>
+                            <select class="form-select" id="userRole" required>
+                                <option value="employee">พนักงาน</option>
+                                <option value="admin">แอดมิน</option>
+                            </select>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ยกเลิก</button>
+                    <button type="button" class="btn btn-primary" id="saveUserButton">บันทึก</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Booking Details Modal -->
+    <div class="modal fade" id="bookingDetailsModal" tabindex="-1" aria-labelledby="bookingDetailsModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="bookingDetailsModalLabel">รายละเอียดการจอง</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body" id="bookingDetailsContent">
+                    <!-- Booking details will be loaded here -->
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ปิด</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Custom Alert Modal -->
+    <div class="modal fade" id="customAlertModal" tabindex="-1" aria-labelledby="customAlertModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="customAlertModalLabel">การแจ้งเตือน</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body" id="customAlertMessage">
+                    <!-- Alert message will be inserted here -->
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-primary" data-bs-dismiss="modal">ตกลง</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Custom Confirm Modal -->
+    <div class="modal fade" id="customConfirmModal" tabindex="-1" aria-labelledby="customConfirmModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="customConfirmModalLabel">ยืนยันการดำเนินการ</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body" id="customConfirmMessage">
+                    <!-- Confirm message will be inserted here -->
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" id="confirmCancelBtn" data-bs-dismiss="modal">ยกเลิก</button>
+                    <button type="button" class="btn btn-primary" id="confirmOkBtn" data-bs-dismiss="modal">ยืนยัน</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS Bundle (includes Popper) -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // -----------------------------------------------------
+            // 1. การจัดการข้อมูล (Local Storage)
+            // -----------------------------------------------------
+
+            const ROOM_STORAGE_KEY = 'hotel_rooms';
+            const BOOKING_STORAGE_KEY = 'hotel_bookings';
+            const USERS_STORAGE_KEY = 'hotel_users'; 
+            const CURRENT_USER_KEY = 'current_user'; 
+
+            // Function to get data from Local Storage
+            function getData(key, defaultData = []) {
+                const data = localStorage.getItem(key);
+                return data ? JSON.parse(data) : defaultData;
+            }
+
+            // Function to save data to Local Storage
+            function saveData(key, data) {
+                localStorage.setItem(key, JSON.stringify(data));
+            }
+
+            // Initialize rooms with default data if not present
+            let rooms = getData(ROOM_STORAGE_KEY);
+            if (rooms.length === 0) {
+                rooms = [
+                    // Rooms from the image_63e675.png table
+                    { id: 1, number: 'U1', type: 'Double room (2nd. Fl.)', price: 2000, status: 'available', beds: '1 Double bed', maxGuests: 2 },
+                    { id: 2, number: 'U2', type: 'Double room (2nd. Fl.)', price: 2000, status: 'booked', beds: '1 Double bed', maxGuests: 2 },
+                    { id: 3, number: 'U3', type: 'Double room (2nd. Fl.)', price: 2000, status: 'occupied', beds: '1 Double bed', maxGuests: 2 },
+                    { id: 4, number: 'U4', type: 'Double room (2nd. Fl.)', price: 2000, status: 'available', beds: '1 Double bed', maxGuests: 2 },
+                    { id: 5, number: 'Q1', type: 'Deluxe (not beach front) (2nd. Fl.)', price: 2400, status: 'available', beds: '1 Double bed & 1 Single bed', maxGuests: 3 },
+                    { id: 6, number: 'Q2', type: 'Deluxe (not beach front) (2nd. Fl.)', price: 2400, status: 'booked', beds: '1 Double bed & 1 Single bed', maxGuests: 3 },
+                    { id: 7, number: 'Q3', type: 'Deluxe (not beach front) (2nd. Fl.)', price: 2400, status: 'occupied', beds: '1 Double bed & 1 Single bed', maxGuests: 3 },
+                    { id: 8, number: 'Q4', type: 'Deluxe (not beach front) (2nd. Fl.)', price: 2400, status: 'available', beds: '1 Double bed & 1 Single bed', maxGuests: 3 },
+                    { id: 9, number: 'Q5', type: 'Deluxe (not beach front) (2nd. Fl.)', price: 2400, status: 'damaged', beds: '1 Double bed & 1 Single bed', maxGuests: 3 },
+                    { id: 10, number: 'Q6', type: 'Deluxe (not beach front) (2nd. Fl.)', price: 2400, status: 'checked-out', beds: '1 Double bed & 1 Single bed', maxGuests: 3 },
+                    { id: 11, number: 'Q7', type: 'Deluxe (not beach front) (2nd. Fl.)', price: 2400, status: 'available', beds: '1 Double bed & 1 Single bed', maxGuests: 3 },
+                    { id: 12, number: 'S1', type: 'Superior (not beach front)', price: 1800, status: 'available', beds: '1 Double bed', maxGuests: 2 },
+                    { id: 13, number: 'S2', type: 'Superior (not beach front)', price: 1800, status: 'booked', beds: '1 Double bed', maxGuests: 2 },
+                    { id: 14, number: 'S3', type: 'Superior (not beach front)', price: 1800, status: 'occupied', beds: '1 Double bed', maxGuests: 2 },
+                    { id: 15, number: 'S4', type: 'Superior (not beach front)', price: 1800, status: 'available', beds: '1 Double bed', maxGuests: 2 },
+                    { id: 16, number: 'S5', type: 'Superior (not beach front)', price: 1800, status: 'damaged', beds: '1 Double bed', maxGuests: 2 },
+                    { id: 17, number: 'S6', type: 'Superior (not beach front)', price: 1800, status: 'checked-out', beds: '1 Double bed', maxGuests: 2 },
+                    { id: 18, number: 'S7', type: 'Superior (not beach front)', price: 2200, status: 'available', beds: '1 Double bed & 1 Single bed', maxGuests: 3 },
+                    { id: 19, number: 'P1', type: 'Family Beach front', price: 3500, status: 'available', beds: '2 Double bed', maxGuests: 4 },
+                    { id: 20, number: 'P2', type: 'Family Beach front', price: 3000, status: 'booked', beds: '1 Double bed & 1 Single bed', maxGuests: 3 },
+                    { id: 21, number: 'P3', type: 'Beach front Room', price: 2400, status: 'occupied', beds: '1 Double bed', maxGuests: 2 },
+                    { id: 22, number: 'P4', type: 'Family Not Beach front', price: 2600, status: 'available', beds: '1 Double bed & 1 Single bed', maxGuests: 3 },
+                    { id: 23, number: 'P5', type: 'Family Not Beach front', price: 2600, status: 'damaged', beds: '1 Double bed & 1 Single bed', maxGuests: 3 },
+                    { id: 24, number: 'P6', type: 'Family Not Beach front', price: 3000, status: 'checked-out', beds: '1 Double bed & 2 Single bed', maxGuests: 4 },
+                    { id: 25, number: 'P7', type: 'Family Not Beach front', price: 3000, status: 'available', beds: '1 Double bed & 2 Single bed', maxGuests: 4 },
+                    { id: 26, number: 'P8', type: 'Family Not Beach front', price: 3000, status: 'booked', beds: '1 Double bed & 2 Single bed', maxGuests: 4 },
+                    { id: 27, number: 'P9', type: 'Family Not Beach front', price: 3000, status: 'occupied', beds: '1 Double bed & 2 Single bed', maxGuests: 4 },
+                    { id: 28, number: 'P10', type: 'Superior (not beach front)', price: 1800, status: 'available', beds: '1 Double bed', maxGuests: 2 },
+                    { id: 29, number: 'P11', type: 'Family Not Beach front', price: 2600, status: 'damaged', beds: '1 Double bed & 1 Single bed', maxGuests: 3 },
+                    { id: 30, number: 'K1', type: 'Thai House (Beach Front)', price: 3500, status: 'available', beds: '1 Double bed', maxGuests: 2 },
+                    { id: 31, number: 'K2', type: 'Thai House (Beach Front)', price: 3500, status: 'booked', beds: '1 Double bed', maxGuests: 2 },
+                    { id: 32, number: 'K3', type: 'Thai House (Beach Front)', price: 3500, status: 'occupied', beds: '1 Double bed', maxGuests: 2 },
+                    { id: 33, number: 'K4', type: 'Thai House (Not Beach Front)', price: 3000, status: 'available', beds: '1 Double bed', maxGuests: 2 },
+                    { id: 34, number: 'K5', type: 'Thai House (Not Beach Front)', price: 3000, status: 'damaged', beds: '1 Double bed', maxGuests: 2 },
+                    { id: 35, number: 'K6', type: 'Thai House (Not Beach Front)', price: 3000, status: 'checked-out', beds: '1 Double bed', maxGuests: 2 },
+                    { id: 36, number: 'K7', type: 'Thai House (Not Beach Front)', price: 3000, status: 'available', beds: '1 Double bed', maxGuests: 2 },
+                    { id: 37, number: 'K8', type: 'Thai House (Not Beach Front)', price: 3000, status: 'booked', beds: '1 Double bed', maxGuests: 2 },
+                    { id: 38, number: 'K9', type: 'Thai House (Not Beach Front)', price: 3000, status: 'occupied', beds: '1 Double bed', maxGuests: 2 },
+                    { id: 39, number: 'K10', type: 'Thai House (Not Beach Front)', price: 3000, status: 'available', beds: '1 Double bed', maxGuests: 2 },
+                    { id: 40, number: 'A1', type: 'Beach front Room', price: 3500, status: 'available', beds: '1 Double bed', maxGuests: 2 },
+                    { id: 41, number: 'A2', type: 'Beach front Room', price: 3500, status: 'booked', beds: '1 Double bed', maxGuests: 2 },
+                    { id: 42, number: 'A3', type: 'Not Beach front Room', price: 2200, status: 'occupied', beds: '1 Double bed', maxGuests: 2 },
+                    { id: 43, number: 'A4', type: 'Not Beach front Room', price: 2200, status: 'available', beds: '1 Double bed', maxGuests: 2 },
+                    { id: 44, number: 'V1', type: 'Beach front Room', price: 0, status: 'available', beds: '1 Double bed', maxGuests: 2 },
+                    { id: 45, number: 'V2', type: 'Beach front Room', price: 0, status: 'booked', beds: '1 Double bed', maxGuests: 2 }
+                ];
+                saveData(ROOM_STORAGE_KEY, rooms);
+            }
+
+            // Initialize bookings with default data if not present
+            let bookings = getData(BOOKING_STORAGE_KEY);
+            if (bookings.length === 0) {
+                const today = new Date();
+                const tomorrow = new Date(today);
+                tomorrow.setDate(today.getDate() + 1);
+                const dayAfterTomorrow = new Date(today);
+                dayAfterTomorrow.setDate(today.getDate() + 2);
+
+                bookings = [
+                    { 
+                        id: 'BKG001', customerName: 'สมชาย ใจดี', customerEmail: 'somchai@example.com',
+                        adults: 2, children: 0, infants: 0,
+                        roomNumber: 'Q3', checkInDate: today.toISOString().split('T')[0], checkOutDate: tomorrow.toISOString().split('T')[0],
+                        status: 'booked', billNumber: '', paymentMethod: '', totalAmount: 0 
+                    },
+                    { 
+                        id: 'BKG002', customerName: 'สมหญิง รักสงบ', customerEmail: 'somying@example.com',
+                        adults: 1, children: 0, infants: 0,
+                        roomNumber: 'U2', checkInDate: new Date(today.getFullYear(), today.getMonth(), today.getDate() - 2).toISOString().split('T')[0], 
+                        checkOutDate: new Date(today.getFullYear(), today.getMonth(), today.getDate() - 1).toISOString().split('T')[0],
+                        status: 'checked-in', billNumber: 'INV001', paymentMethod: 'cash', totalAmount: 3000 
+                    },
+                    { 
+                        id: 'BKG003', customerName: 'มานะ สุขสบาย', customerEmail: 'mana@example.com',
+                        adults: 3, children: 1, infants: 0,
+                        roomNumber: 'P1', checkInDate: tomorrow.toISOString().split('T')[0], checkOutDate: dayAfterTomorrow.toISOString().split('T')[0],
+                        status: 'booked', billNumber: '', paymentMethod: '', totalAmount: 0 
+                    },
+                    { 
+                        id: 'BKG004', customerName: 'สุดา แสนสุข', customerEmail: 'suda@example.com',
+                        adults: 2, children: 0, infants: 0,
+                        roomNumber: 'K5', checkInDate: today.toISOString().split('T')[0], checkOutDate: tomorrow.toISOString().split('T')[0],
+                        status: 'damaged', billNumber: '', paymentMethod: '', totalAmount: 0 
+                    },
+                    { 
+                        id: 'BKG005', customerName: 'วีระ ชัยชนะ', customerEmail: 'weera@example.com',
+                        adults: 1, children: 0, infants: 0,
+                        roomNumber: 'A3', checkInDate: today.toISOString().split('T')[0], checkOutDate: tomorrow.toISOString().split('T')[0],
+                        status: 'occupied', billNumber: 'INV002', paymentMethod: 'card', totalAmount: 2200 
+                    }
+                ];
+                saveData(BOOKING_STORAGE_KEY, bookings);
+            }
+
+            // Initialize users with default data if not present
+            let users = getData(USERS_STORAGE_KEY);
+            if (users.length === 0 || !users.some(u => u.username === 'adminpearl1234')) { 
+                users = [
+                    { username: 'adminpearl1234', password: 'pearl1234', role: 'admin' }, 
+                    { username: 'employee', password: 'employeepassword', role: 'employee' }
+                ];
+                saveData(USERS_STORAGE_KEY, users);
+            }
+            
+            let currentUser = getData(CURRENT_USER_KEY, null); 
+
+            // -----------------------------------------------------
+            // 2. การจัดการ UI และการนำทาง (Navigation)
+            // -----------------------------------------------------
+
+            const sidebarToggle = document.getElementById('menu-toggle');
+            const wrapper = document.getElementById('wrapper');
+            const loginPage = document.getElementById('login-page');
+            const loginForm = document.getElementById('loginForm');
+            const usernameInput = document.getElementById('usernameInput');
+            const passwordInput = document.getElementById('passwordInput');
+            const loginErrorMessage = document.getElementById('login-error-message');
+            const logoutButton = document.getElementById('logoutButton');
+            const roomManagementLink = document.getElementById('roomManagementLink');
+            const addRoomBtn = document.getElementById('addRoomBtn'); 
+            const systemSettingsLink = document.getElementById('systemSettingsLink'); 
+            const togglePassword = document.getElementById('togglePassword'); // Get the toggle password icon
+            const adminLoginBtn = document.getElementById('adminLoginBtn'); // Admin login button
+            const employeeLoginBtn = document.getElementById('employeeLoginBtn'); // Employee login button
+
+            // Custom Modal Elements
+            const customAlertModal = new bootstrap.Modal(document.getElementById('customAlertModal'));
+            const customAlertMessage = document.getElementById('customAlertMessage');
+            const customConfirmModal = new bootstrap.Modal(document.getElementById('customConfirmModal'));
+            const customConfirmMessage = document.getElementById('customConfirmMessage');
+            const confirmOkBtn = document.getElementById('confirmOkBtn');
+            const confirmCancelBtn = document.getElementById('confirmCancelBtn');
+
+            let confirmPromiseResolve = null;
+
+            /**
+             * Shows a custom alert modal.
+             * @param {string} message - The message to display.
+             */
+            function showAlert(message) {
+                customAlertMessage.textContent = message;
+                customAlertModal.show();
+            }
+
+            /**
+             * Shows a custom confirmation modal and returns a Promise.
+             * @param {string} message - The message to display.
+             * @returns {Promise<boolean>} A promise that resolves to true if confirmed, false if cancelled.
+             */
+            function showConfirm(message) {
+                customConfirmMessage.textContent = message;
+                customConfirmModal.show();
+                return new Promise(resolve => {
+                    confirmPromiseResolve = resolve;
+                });
+            }
+
+            // Event listeners for custom confirm modal buttons
+            confirmOkBtn.addEventListener('click', () => {
+                if (confirmPromiseResolve) {
+                    confirmPromiseResolve(true);
+                    confirmPromiseResolve = null;
+                }
+            });
+
+            confirmCancelBtn.addEventListener('click', () => {
+                if (confirmPromiseResolve) {
+                    confirmPromiseResolve(false);
+                    confirmPromiseResolve = null;
+                }
+            });
+
+            // Ensure the promise is resolved if the modal is closed via backdrop/escape
+            customConfirmModal._element.addEventListener('hide.bs.modal', () => {
+                if (confirmPromiseResolve) {
+                    confirmPromiseResolve(false); // Treat closing as cancellation
+                    confirmPromiseResolve = null;
+                }
+            });
+
+
+            sidebarToggle.addEventListener('click', () => {
+                wrapper.classList.toggle('toggled');
+            });
+
+            // Show the desired section when a menu item is clicked
+            document.querySelectorAll('.list-group-item').forEach(item => {
+                item.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    // Do not navigate if the link is disabled by role
+                    if (this.classList.contains('disabled')) {
+                        return;
+                    }
+
+                    // Hide all sections
+                    document.querySelectorAll('.content-section').forEach(section => {
+                        section.classList.remove('active-section');
+                    });
+                    // Remove active class from all menu items
+                    document.querySelectorAll('.list-group-item').forEach(nav => {
+                        nav.classList.remove('active');
+                    });
+                    
+                    // Show the selected section and add active class
+                    const targetId = this.getAttribute('data-target');
+                    if (targetId) { 
+                        document.getElementById(targetId).classList.add('active-section');
+                    }
+                    this.classList.add('active');
+                    
+                    // Call rendering function for the selected section
+                    if (targetId === 'dashboard') {
+                        renderDashboard();
+                    } else if (targetId === 'room-management') {
+                        renderRoomList();
+                    } else if (targetId === 'booking-management') {
+                        renderBookingList();
+                        renderBookingCalendar(); // Render calendar when booking management is active
+                    } else if (targetId === 'customer-data') {
+                        renderCustomerData();
+                    } else if (targetId === 'system-settings') { 
+                        renderUserList();
+                    }
+                    // Hide sidebar on small screens after selection
+                    if (window.innerWidth <= 768) {
+                        wrapper.classList.remove('toggled');
+                    }
+                });
+            });
+
+            // Function to handle login attempt
+            function handleLogin(role) {
+                const username = usernameInput.value;
+                const password = passwordInput.value;
+                
+                const foundUser = users.find(u => u.username === username && u.password === password && u.role === role);
+
+                if (foundUser) {
+                    currentUser = foundUser;
+                    saveData(CURRENT_USER_KEY, currentUser);
+                    loginPage.classList.add('hidden');
+                    wrapper.classList.remove('hidden');
+                    updateUIForRole(currentUser.role);
+                    renderDashboard(); 
+                    loginErrorMessage.classList.add('hidden'); 
+                } else {
+                    loginErrorMessage.classList.remove('hidden');
+                }
+            }
+
+            // Event listeners for login buttons
+            adminLoginBtn.addEventListener('click', () => handleLogin('admin'));
+            employeeLoginBtn.addEventListener('click', () => handleLogin('employee'));
+
+            logoutButton.addEventListener('click', () => {
+                currentUser = null;
+                saveData(CURRENT_USER_KEY, null);
+                wrapper.classList.add('hidden');
+                loginPage.classList.remove('hidden');
+                usernameInput.value = '';
+                passwordInput.value = '';
+                loginErrorMessage.classList.add('hidden'); 
+                // Reset active sidebar link
+                document.querySelectorAll('.list-group-item').forEach(nav => {
+                    nav.classList.remove('active');
+                });
+                document.querySelector('.list-group-item[data-target="dashboard"]').classList.add('active');
+            });
+
+            // Function to update UI based on user role
+            function updateUIForRole(role) {
+                if (role === 'admin') {
+                    roomManagementLink.classList.remove('disabled');
+                    addRoomBtn.classList.remove('disabled');
+                    systemSettingsLink.classList.remove('disabled'); 
+                    // Enable edit/delete buttons for rooms (will be handled in renderRoomList)
+                } else if (role === 'employee') {
+                    roomManagementLink.classList.add('disabled');
+                    addRoomBtn.classList.add('disabled');
+                    systemSettingsLink.classList.add('disabled'); 
+                    // Hide edit/delete buttons for rooms (will be handled in renderRoomList)
+                }
+            }
+
+            // Toggle password visibility
+            togglePassword.addEventListener('click', function () {
+                const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+                passwordInput.setAttribute('type', type);
+                this.querySelector('i').classList.toggle('fa-eye');
+                this.querySelector('i').classList.toggle('fa-eye-slash');
+            });
+
+            // Initial check for logged-in user
+            if (currentUser) {
+                loginPage.classList.add('hidden');
+                wrapper.classList.remove('hidden');
+                updateUIForRole(currentUser.role);
+                renderDashboard(); 
+            } else {
+                loginPage.classList.remove('hidden');
+                wrapper.classList.add('hidden');
+            }
+
+
+            // -----------------------------------------------------
+            // 3. แดชบอร์ด (Dashboard)
+            // -----------------------------------------------------
+
+            function renderDashboard() {
+                rooms = getData(ROOM_STORAGE_KEY); 
+                const roomCounts = {
+                    total: rooms.length,
+                    available: 0,
+                    booked: 0,
+                    occupied: 0,
+                    damaged: 0,
+                    checkedOut: 0
+                };
+
+                rooms.forEach(room => {
+                    if (room.status === 'available') roomCounts.available++;
+                    if (room.status === 'booked') roomCounts.booked++;
+                    if (room.status === 'occupied') roomCounts.occupied++;
+                    if (room.status === 'damaged') roomCounts.damaged++;
+                    if (room.status === 'checked-out') roomCounts.checkedOut++;
+                });
+
+                const dashboardSummary = document.getElementById('room-summary');
+                dashboardSummary.innerHTML = `
+                    <div class="col-md-4 mb-3">
+                        <div class="card text-white bg-primary shadow-sm rounded-3">
+                            <div class="card-body">
+                                <h5 class="card-title"><i class="fas fa-hotel me-2"></i> ห้องทั้งหมด</h5>
+                                <p class="card-text fs-2">${roomCounts.total}</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <div class="card text-dark bg-light shadow-sm rounded-3">
+                            <div class="card-body">
+                                <h5 class="card-title"><i class="fas fa-door-open me-2"></i> ห้องว่าง</h5>
+                                <p class="card-text fs-2">${roomCounts.available}</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <div class="card text-white bg-danger shadow-sm rounded-3">
+                            <div class="card-body">
+                                <h5 class="card-title"><i class="fas fa-calendar-check me-2"></i> ห้องจอง</h5>
+                                <p class="card-text fs-2">${roomCounts.booked}</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <div class="card text-white bg-success shadow-sm rounded-3">
+                            <div class="card-body">
+                                <h5 class="card-title"><i class="fas fa-user-friends me-2"></i> ห้องมีผู้เข้าพัก</h5>
+                                <p class="card-text fs-2">${roomCounts.occupied}</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <div class="card text-dark bg-warning shadow-sm rounded-3">
+                            <div class="card-body">
+                                <h5 class="card-title"><i class="fas fa-tools me-2"></i> ห้องชำรุด</h5>
+                                <p class="card-text fs-2">${roomCounts.damaged}</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <div class="card text-white bg-info shadow-sm rounded-3">
+                            <div class="card-body">
+                                <h5 class="card-title"><i class="fas fa-sign-out-alt me-2"></i> ห้องเช็คเอาท์</h5>
+                                <p class="card-text fs-2">${roomCounts.checkedOut}</p>
+                            </div>
+                        </div>
+                    </div>
+                `;
+
+                renderRoomMap(); 
+            }
+
+            // -----------------------------------------------------
+            // 4. การจัดการห้องพัก (Room Management)
+            // -----------------------------------------------------
+
+            const roomListElement = document.getElementById('room-list');
+            const roomModal = new bootstrap.Modal(document.getElementById('roomModal'));
+            const roomForm = document.getElementById('roomForm');
+            const saveRoomButton = document.getElementById('saveRoomButton');
+            const searchRoomInput = document.getElementById('searchRoom');
+
+            // Function to get status info (label and CSS class)
+            function getStatusInfo(status) {
+                let label = '';
+                let className = '';
+                switch(status) {
+                    case 'available':
+                        label = 'ว่าง';
+                        className = 'status-available';
+                        break;
+                    case 'booked':
+                        label = 'จอง';
+                        className = 'status-booked';
+                        break;
+                    case 'occupied':
+                        label = 'มีผู้เข้าพัก';
+                        className = 'status-occupied';
+                        break;
+                    case 'damaged':
+                        label = 'ชำรุด';
+                        className = 'status-damaged';
+                        break;
+                    case 'checked-out':
+                        label = 'เช็คเอาท์';
+                        className = 'status-checked-out';
+                        break;
+                    default:
+                        label = status;
+                        className = 'status-unknown'; 
+                }
+                return { label, className };
+            }
+
+            // Render room list in the table
+            function renderRoomList() {
+                rooms = getData(ROOM_STORAGE_KEY); 
+                const searchTerm = searchRoomInput.value.toLowerCase();
+                const filteredRooms = rooms.filter(room => 
+                    room.number.toLowerCase().includes(searchTerm) ||
+                    room.type.toLowerCase().includes(searchTerm)
+                );
+
+                roomListElement.innerHTML = '';
+                
+                if (filteredRooms.length === 0) {
+                    roomListElement.innerHTML = `<tr><td colspan="8" class="text-center">ไม่พบห้องพักที่ตรงกับคำค้นหา</td></tr>`;
+                    return;
+                }
+
+                filteredRooms.forEach(room => {
+                    const statusInfo = getStatusInfo(room.status);
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${room.id}</td>
+                        <td>${room.number}</td>
+                        <td>${room.type}</td>
+                        <td>${room.price.toLocaleString()}</td>
+                        <td>${room.beds || '-'}</td>
+                        <td>${room.maxGuests || '-'}</td>
+                        <td>
+                            <span class="status-pill ${statusInfo.className}">${statusInfo.label}</span>
+                        </td>
+                        <td>
+                            <button class="btn btn-sm btn-warning edit-room me-1" data-id="${room.id}">
+                                <i class="fas fa-edit"></i> แก้ไข
+                            </button>
+                            <button class="btn btn-sm btn-danger delete-room" data-id="${room.id}">
+                                <i class="fas fa-trash"></i> ลบ
+                            </button>
+                        </td>
+                    `;
+                    roomListElement.appendChild(row);
+                });
+
+                // Add event listeners for edit and delete buttons
+                document.querySelectorAll('.edit-room').forEach(button => {
+                    button.addEventListener('click', editRoom);
+                    // Hide/show based on current user role
+                    if (currentUser && currentUser.role !== 'admin') {
+                        button.classList.add('hidden');
+                    } else {
+                        button.classList.remove('hidden');
+                    }
+                });
+                document.querySelectorAll('.delete-room').forEach(button => {
+                    button.addEventListener('click', deleteRoom);
+                    // Hide/show based on current user role
+                    if (currentUser && currentUser.role !== 'admin') {
+                        button.classList.add('hidden');
+                    } else {
+                        button.classList.remove('hidden');
+                    }
+                });
+            }
+
+            // Open Modal to edit room
+            async function editRoom(e) {
+                // Only allow admin to edit
+                if (currentUser && currentUser.role !== 'admin') {
+                    showAlert('คุณไม่มีสิทธิ์ในการแก้ไขห้องพัก');
+                    return;
+                }
+
+                const roomId = parseInt(e.currentTarget.getAttribute('data-id'));
+                const room = rooms.find(r => r.id === roomId);
+
+                if (room) {
+                    document.getElementById('roomModalLabel').textContent = 'แก้ไขห้องพัก';
+                    document.getElementById('roomId').value = room.id;
+                    document.getElementById('roomNumber').value = room.number;
+                    document.getElementById('roomType').value = room.type;
+                    document.getElementById('roomPrice').value = room.price;
+                    document.getElementById('roomBeds').value = room.beds || ''; 
+                    document.getElementById('roomMaxGuests').value = room.maxGuests || ''; 
+                    document.getElementById('roomStatus').value = room.status;
+                    
+                    roomModal.show();
+                }
+            }
+
+            // Delete room
+            async function deleteRoom(e) {
+                // Only allow admin to delete
+                if (currentUser && currentUser.role !== 'admin') {
+                    showAlert('คุณไม่มีสิทธิ์ในการลบห้องพัก');
+                    return;
+                }
+
+                const confirmed = await showConfirm('ยืนยันการลบห้องพักนี้? การดำเนินการนี้ไม่สามารถย้อนกลับได้');
+                if (!confirmed) return;
+
+                const roomId = parseInt(e.currentTarget.getAttribute('data-id'));
+                rooms = rooms.filter(r => r.id !== roomId);
+                saveData(ROOM_STORAGE_KEY, rooms);
+                renderRoomList();
+                renderDashboard(); 
+            }
+
+            // Save changes or add new room
+            saveRoomButton.addEventListener('click', () => {
+                // Only allow admin to save
+                if (currentUser && currentUser.role !== 'admin') {
+                    showAlert('คุณไม่มีสิทธิ์ในการบันทึกข้อมูลห้องพัก');
+                    return;
+                }
+
+                const roomId = document.getElementById('roomId').value;
+                const roomNumber = document.getElementById('roomNumber').value.trim();
+                const roomType = document.getElementById('roomType').value.trim();
+                const roomPrice = parseFloat(document.getElementById('roomPrice').value);
+                const roomBeds = document.getElementById('roomBeds').value.trim(); 
+                const roomMaxGuests = parseInt(document.getElementById('roomMaxGuests').value); 
+                const roomStatus = document.getElementById('roomStatus').value;
+                
+                if (!roomNumber || !roomType || isNaN(roomPrice) || roomPrice < 0 || isNaN(roomMaxGuests) || roomMaxGuests < 1) {
+                    showAlert('กรุณากรอกข้อมูลห้องพักให้ครบถ้วนและถูกต้อง (ราคาและจำนวนผู้เข้าพักต้องเป็นตัวเลขบวก)');
+                    return;
+                }
+
+                if (roomId) {
+                    // Update existing room
+                    rooms = rooms.map(room => {
+                        if (room.id == roomId) {
+                            return {
+                                ...room,
+                                number: roomNumber,
+                                type: roomType,
+                                price: roomPrice,
+                                beds: roomBeds, 
+                                maxGuests: roomMaxGuests, 
+                                status: roomStatus
+                            };
+                        }
+                        return room;
+                    });
+                } else {
+                    // Add new room
+                    const newRoom = {
+                        id: rooms.length > 0 ? Math.max(...rooms.map(r => r.id)) + 1 : 1,
+                        number: roomNumber,
+                        type: roomType,
+                        price: roomPrice,
+                        beds: roomBeds, 
+                        maxGuests: roomMaxGuests, 
+                        status: roomStatus
+                    };
+                    // Check if room number already exists
+                    if (rooms.some(r => r.number === newRoom.number)) {
+                        showAlert('หมายเลขห้องนี้มีอยู่แล้ว กรุณาใช้หมายเลขอื่น');
+                        return;
+                    }
+                    rooms.push(newRoom);
+                }
+
+                saveData(ROOM_STORAGE_KEY, rooms);
+                roomModal.hide();
+                renderRoomList();
+                renderDashboard(); 
+            });
+
+            // Event listener for "Add New Room" button
+            addRoomBtn.addEventListener('click', () => {
+                // Only allow admin to add
+                if (currentUser && currentUser.role !== 'admin') {
+                    showAlert('คุณไม่มีสิทธิ์ในการเพิ่มห้องพักใหม่');
+                    return;
+                }
+                roomForm.reset(); 
+                document.getElementById('roomId').value = ''; 
+                document.getElementById('roomModalLabel').textContent = 'เพิ่มห้องพักใหม่';
+                // Set default values for new fields
+                document.getElementById('roomBeds').value = '';
+                document.getElementById('roomMaxGuests').value = 1; 
+                roomModal.show(); 
+            });
+
+            // Search functionality for room management
+            searchRoomInput.addEventListener('keyup', renderRoomList);
+
+            // -----------------------------------------------------
+            // 5. จัดการการจอง (Booking Management)
+            // -----------------------------------------------------
+
+            const bookingListElement = document.getElementById('booking-list');
+            const newBookingModal = new bootstrap.Modal(document.getElementById('newBookingModal'));
+            const newBookingForm = document.getElementById('newBookingForm');
+            const saveBookingButton = document.getElementById('saveBookingButton');
+            const newBookingBtn = document.getElementById('newBookingBtn');
+            const bookingRoomNumberSelect = document.getElementById('bookingRoomNumber');
+            const checkInDateInput = document.getElementById('checkInDate');
+            const checkOutDateInput = document.getElementById('checkOutDate');
+            const checkInConfirmModal = new bootstrap.Modal(document.getElementById('checkInConfirmModal'));
+            const confirmCheckInButton = document.getElementById('confirmCheckInButton');
+            const billNumberInput = document.getElementById('billNumberInput');
+            const paymentMethodSelect = document.getElementById('paymentMethodSelect'); 
+            const totalAmountInput = document.getElementById('totalAmountInput'); 
+            const searchBookingInput = document.getElementById('searchBooking');
+            const newBookingIdInput = document.getElementById('newBookingId'); 
+            let currentBookingIdForCheckIn = null; 
+            const bookingDetailsModal = new bootstrap.Modal(document.getElementById('bookingDetailsModal'));
+            const bookingDetailsContent = document.getElementById('bookingDetailsContent');
+
+            // Render booking list for current day
+            function renderBookingList() {
+                bookings = getData(BOOKING_STORAGE_KEY); 
+                const searchTerm = searchBookingInput.value.toLowerCase();
+
+                const filteredBookings = bookings.filter(booking => {
+                    const matchesSearch = booking.id.toLowerCase().includes(searchTerm) || 
+                                          booking.customerName.toLowerCase().includes(searchTerm) ||
+                                          booking.roomNumber.toLowerCase().includes(searchTerm); 
+                    return matchesSearch; 
+                });
+
+                bookingListElement.innerHTML = '';
+
+                if (filteredBookings.length === 0) {
+                    bookingListElement.innerHTML = `<tr><td colspan="7" class="text-center">ไม่พบรายการจองที่เกี่ยวข้อง</td></tr>`;
+                    return;
+                }
+
+                filteredBookings.forEach(booking => {
+                    let statusLabel = '';
+                    let statusClass = '';
+                    let actionsHtml = '';
+
+                    switch (booking.status) {
+                        case 'booked':
+                            statusLabel = 'จอง';
+                            statusClass = 'status-booked';
+                            actionsHtml = `
+                                <button class="btn btn-sm btn-success check-in-booking me-1" data-id="${booking.id}">
+                                    <i class="fas fa-check-circle"></i> เช็คอินสำเร็จ
+                                </button>
+                                <button class="btn btn-sm btn-danger cancel-booking" data-id="${booking.id}">
+                                    <i class="fas fa-times-circle"></i> ยกเลิก
+                                </button>
+                            `;
+                            break;
+                        case 'checked-in':
+                            statusLabel = 'เช็คอินแล้ว';
+                            statusClass = 'status-occupied';
+                            actionsHtml = `
+                                <button class="btn btn-sm btn-info check-out-booking" data-id="${booking.id}">
+                                    <i class="fas fa-sign-out-alt"></i> เช็คเอาท์
+                                </button>
+                            `;
+                            break;
+                        case 'checked-out':
+                            statusLabel = 'เช็คเอาท์แล้ว';
+                            statusClass = 'status-checked-out';
+                            actionsHtml = ''; // No further action needed
+                            break;
+                        case 'cancelled':
+                            statusLabel = 'ยกเลิกแล้ว';
+                            statusClass = 'status-cancelled'; 
+                            actionsHtml = ''; // No further action needed
+                            break;
+                        default:
+                            statusLabel = booking.status;
+                            statusClass = '';
+                            actionsHtml = '';
+                    }
+
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${booking.id}</td>
+                        <td>${booking.customerName}</td>
+                        <td>${booking.roomNumber}</td>
+                        <td>${booking.checkInDate}</td>
+                        <td>${booking.checkOutDate}</td>
+                        <td><span class="status-pill ${statusClass}">${statusLabel}</span></td>
+                        <td>${actionsHtml}</td>
+                    `;
+                    bookingListElement.appendChild(row);
+                });
+
+                // Add event listeners for booking actions
+                document.querySelectorAll('.check-in-booking').forEach(button => {
+                    button.addEventListener('click', promptCheckIn);
+                });
+                document.querySelectorAll('.cancel-booking').forEach(button => {
+                    button.addEventListener('click', cancelBooking);
+                });
+                document.querySelectorAll('.check-out-booking').forEach(button => {
+                    button.addEventListener('click', checkOutBooking);
+                });
+            }
+
+            // Populate room select options in new booking modal
+            function populateRoomSelect() {
+                rooms = getData(ROOM_STORAGE_KEY);
+                bookingRoomNumberSelect.innerHTML = '<option value="">เลือกห้อง</option>';
+                // Only show available rooms for new bookings
+                rooms.filter(r => r.status === 'available').forEach(room => {
+                    const option = document.createElement('option');
+                    option.value = room.number;
+                    option.textContent = `ห้อง ${room.number} (${room.type} - ${room.beds} - พักได้ ${room.maxGuests} คน - ${room.price.toLocaleString()} บาท)`;
+                    bookingRoomNumberSelect.appendChild(option);
+                });
+            }
+
+            // Open new booking modal
+            newBookingBtn.addEventListener('click', () => {
+                newBookingForm.reset();
+                document.getElementById('newBookingId').value = ''; // Clear ID for new booking
+                document.getElementById('newBookingModalLabel').textContent = 'สร้างรายการจองใหม่';
+                populateRoomSelect();
+                // Set default dates to today and tomorrow
+                const today = new Date().toISOString().split('T')[0];
+                const tomorrow = new Date();
+                tomorrow.setDate(new Date().getDate() + 1);
+                document.getElementById('checkInDate').value = today;
+                document.getElementById('checkOutDate').value = tomorrow.toISOString().split('T')[0];
+                newBookingModal.show();
+            });
+
+            // Save new booking
+            saveBookingButton.addEventListener('click', () => {
+                const bookingId = document.getElementById('newBookingId').value.trim(); // Get user-provided ID
+                const customerName = document.getElementById('customerName').value.trim();
+                const customerEmail = document.getElementById('customerEmail').value.trim();
+                const adults = parseInt(document.getElementById('adults').value);
+                const children = parseInt(document.getElementById('children').value);
+                const infants = parseInt(document.getElementById('infants').value);
+                const roomNumber = document.getElementById('bookingRoomNumber').value;
+                const checkInDate = document.getElementById('checkInDate').value;
+                const checkOutDate = document.getElementById('checkOutDate').value;
+
+                if (!bookingId || !customerName || !roomNumber || !checkInDate || !checkOutDate || isNaN(adults) || adults < 0) {
+                    showAlert('กรุณากรอกข้อมูลการจองให้ครบถ้วนและถูกต้อง');
+                    return;
+                }
+                if (new Date(checkOutDate) <= new Date(checkInDate)) {
+                    showAlert('วันเช็คเอาท์ต้องอยู่หลังวันเช็คอิน');
+                    return;
+                }
+
+                let currentBookings = getData(BOOKING_STORAGE_KEY);
+                let currentRooms = getData(ROOM_STORAGE_KEY);
+
+                // Check if booking ID already exists
+                if (currentBookings.some(b => b.id === bookingId)) {
+                    showAlert('ID การจองนี้มีอยู่แล้ว กรุณาใช้ ID อื่น');
+                    return;
+                }
+
+                // Get the selected room's maxGuests to validate against adults, children, infants
+                const selectedRoom = currentRooms.find(room => room.number === roomNumber);
+                if (selectedRoom && (adults + children + infants) > selectedRoom.maxGuests) {
+                    showAlert(`จำนวนผู้เข้าพัก (รวมผู้ใหญ่ เด็ก และทารก) เกินความจุสูงสุดของห้อง ${roomNumber} ซึ่งรองรับได้สูงสุด ${selectedRoom.maxGuests} คน`);
+                    return;
+                }
+
+
+                // Create new booking
+                const newBooking = {
+                    id: bookingId, // Use user-provided ID
+                    customerName, customerEmail, adults, children, infants,
+                    roomNumber, checkInDate, checkOutDate,
+                    status: 'booked', // New bookings are always 'booked' initially
+                    billNumber: '',
+                    paymentMethod: '', 
+                    totalAmount: 0,
+                    color: getRandomColor() // Assign a random color
+                };
+
+                // Check for room availability for the selected dates
+                const isRoomAvailable = currentBookings.every(b => {
+                    // If booking is for the same room and overlaps with new booking dates
+                    if (b.roomNumber === newBooking.roomNumber && b.status !== 'cancelled' && b.status !== 'checked-out') {
+                        const existingCheckIn = new Date(b.checkInDate);
+                        const existingCheckOut = new Date(b.checkOutDate);
+                        const newCheckIn = new Date(newBooking.checkInDate);
+                        const newCheckOut = new Date(newBooking.checkOutDate);
+
+                        // Check for overlap: (StartA < EndB) && (EndA > StartB)
+                        return !(newCheckIn < existingCheckIn && newCheckOut > existingCheckIn) &&
+                               !(newCheckIn < existingCheckOut && newCheckOut > existingCheckOut) &&
+                               !(existingCheckIn < newCheckOut && existingCheckOut > newCheckOut);
+                    }
+                    return true; // Room is available or it's a different room
+                });
+
+                if (!isRoomAvailable) {
+                    showAlert('ห้องพักไม่ว่างในช่วงวันที่เลือก กรุณาเลือกห้องหรือวันอื่น');
+                    return;
+                }
+
+                currentBookings.push(newBooking);
+
+                // Update room status to 'booked' if it's currently 'available'
+                currentRooms = currentRooms.map(room => {
+                    if (room.number === newBooking.roomNumber && room.status === 'available') {
+                        return { ...room, status: 'booked' };
+                    }
+                    return room;
+                });
+                
+                saveData(BOOKING_STORAGE_KEY, currentBookings);
+                saveData(ROOM_STORAGE_KEY, currentRooms);
+                newBookingModal.hide();
+                renderBookingList();
+                renderDashboard(); // Update dashboard and map
+                renderBookingCalendar(); // Re-render calendar
+            });
+
+            // Prompt for bill number, payment method, and total amount before check-in
+            function promptCheckIn(e) {
+                currentBookingIdForCheckIn = e.currentTarget.getAttribute('data-id');
+                billNumberInput.value = ''; // Clear previous bill number
+                paymentMethodSelect.value = ''; // Clear previous selection
+                totalAmountInput.value = ''; // Clear previous amount
+
+                // Pre-fill total amount if room price is known
+                const booking = bookings.find(b => b.id === currentBookingIdForCheckIn);
+                if (booking) {
+                    const room = rooms.find(r => r.number === booking.roomNumber);
+                    if (room) {
+                        // Calculate number of nights
+                        const checkIn = new Date(booking.checkInDate);
+                        const checkOut = new Date(booking.checkOutDate);
+                        const diffTime = Math.abs(checkOut - checkIn);
+                        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
+                        totalAmountInput.value = room.price * diffDays;
+                    }
+                }
+
+                checkInConfirmModal.show();
+            }
+
+            // Confirm check-in
+            confirmCheckInButton.addEventListener('click', () => {
+                const billNumber = billNumberInput.value.trim();
+                const paymentMethod = paymentMethodSelect.value;
+                const totalAmount = parseFloat(totalAmountInput.value);
+
+                if (!billNumber || !paymentMethod || isNaN(totalAmount) || totalAmount < 0) {
+                    showAlert('กรุณากรอกข้อมูลการชำระเงินให้ครบถ้วนและถูกต้อง');
+                    return;
+                }
+
+                bookings = getData(BOOKING_STORAGE_KEY);
+                rooms = getData(ROOM_STORAGE_KEY);
+
+                const bookingIndex = bookings.findIndex(b => b.id === currentBookingIdForCheckIn);
+                if (bookingIndex !== -1) {
+                    const roomNumber = bookings[bookingIndex].roomNumber;
+                    
+                    // Update booking status and new payment details
+                    bookings[bookingIndex].status = 'checked-in';
+                    bookings[bookingIndex].billNumber = billNumber;
+                    bookings[bookingIndex].paymentMethod = paymentMethod; 
+                    bookings[bookingIndex].totalAmount = totalAmount; 
+                    saveData(BOOKING_STORAGE_KEY, bookings);
+
+                    // Update room status to occupied
+                    rooms = rooms.map(room => {
+                        if (room.number === roomNumber) {
+                            return { ...room, status: 'occupied' };
+                        }
+                        return room;
+                    });
+                    saveData(ROOM_STORAGE_KEY, rooms);
+
+                    checkInConfirmModal.hide();
+                    renderBookingList();
+                    renderDashboard(); // Update dashboard and map
+                    renderCustomerData(); // Update customer data
+                    renderBookingCalendar(); // Re-render calendar
+                }
+            });
+
+            // Cancel booking
+            async function cancelBooking(e) {
+                const confirmed = await showConfirm('ยืนยันการยกเลิกการจองนี้?');
+                if (!confirmed) return;
+
+                const bookingId = e.currentTarget.getAttribute('data-id');
+                bookings = getData(BOOKING_STORAGE_KEY);
+                rooms = getData(ROOM_STORAGE_KEY);
+
+                const bookingIndex = bookings.findIndex(b => b.id === bookingId);
+                if (bookingIndex !== -1) {
+                    const roomNumber = bookings[bookingIndex].roomNumber;
+                    
+                    // Update booking status
+                    bookings[bookingIndex].status = 'cancelled';
+                    saveData(BOOKING_STORAGE_KEY, bookings);
+
+                    // If the room was booked for this specific booking, set it back to available
+                    // This logic might need refinement for complex scenarios (e.g., multiple bookings for same room on different dates)
+                    // For simplicity, we assume one-to-one booking for now.
+                    const isRoomFreeAfterCancel = !bookings.some(b => 
+                        b.roomNumber === roomNumber && 
+                        b.status !== 'cancelled' && 
+                        b.status !== 'checked-out' && 
+                        b.id !== bookingId // Exclude the current booking
+                    );
+
+                    if (isRoomFreeAfterCancel) {
+                        rooms = rooms.map(room => {
+                            if (room.number === roomNumber && (room.status === 'booked' || room.status === 'occupied')) {
+                                return { ...room, status: 'available' };
+                            }
+                            return room;
+                        });
+                        saveData(ROOM_STORAGE_KEY, rooms);
+                    }
+                    
+                    renderBookingList();
+                    renderDashboard(); // Update dashboard and map
+                    renderCustomerData(); // Update customer data
+                    renderBookingCalendar(); // Re-render calendar
+                }
+            }
+
+            // Check-out booking
+            async function checkOutBooking(e) {
+                const confirmed = await showConfirm('ยืนยันการเช็คเอาท์ห้องพักนี้?');
+                if (!confirmed) return;
+
+                const bookingId = e.currentTarget.getAttribute('data-id');
+                bookings = getData(BOOKING_STORAGE_KEY);
+                rooms = getData(ROOM_STORAGE_KEY);
+
+                const bookingIndex = bookings.findIndex(b => b.id === bookingId);
+                if (bookingIndex !== -1) {
+                    const roomNumber = bookings[bookingIndex].roomNumber;
+                    
+                    // Update booking status
+                    bookings[bookingIndex].status = 'checked-out';
+                    saveData(BOOKING_STORAGE_KEY, bookings);
+
+                    // Update room status to available (assuming it's now free)
+                    rooms = rooms.map(room => {
+                        if (room.number === roomNumber && room.status === 'occupied') {
+                            return { ...room, status: 'available' };
+                        }
+                        return room;
+                    });
+                    saveData(ROOM_STORAGE_KEY, rooms);
+
+                    renderBookingList();
+                    renderDashboard(); // Update dashboard and map
+                    renderCustomerData(); // Update customer data
+                    renderBookingCalendar(); // Re-render calendar
+                }
+            }
+
+            // Search functionality for booking management
+            searchBookingInput.addEventListener('keyup', renderBookingList);
+            document.getElementById('clearSearchBooking').addEventListener('click', () => {
+                searchBookingInput.value = '';
+                renderBookingList();
+            });
+
+            // -----------------------------------------------------
+            // 6. แผนที่ห้องพัก (Room Map Visualization)
+            // -----------------------------------------------------
+
+            const roomMapElement = document.getElementById('room-map');
+
+            function renderRoomMap() {
+                rooms = getData(ROOM_STORAGE_KEY); // Get latest room data
+                roomMapElement.innerHTML = ''; // Clear previous map
+
+                // Define the layout based on the PDF snippet, grouping similar room types
+                const roomLayout = [
+                    // U block
+                    { label: 'U Block', rooms: ['U4', 'U3', 'U2', 'U1'] },
+                    // Q rooms - separated into its own row
+                    { label: 'Q Rooms', rooms: ['Q7', 'Q6', 'Q5', 'Q4', 'Q3', 'Q2', 'Q1'] },
+                    // S rooms - separated into its own row
+                    { label: 'S Rooms', rooms: ['S7', 'S6', 'S5', 'S4', 'S3', 'S2', 'S1'] },
+                    // P row
+                    { label: 'P Row', rooms: ['P11', 'P10', 'P9', 'P8', 'P7', 'P6', 'P5', 'P4', 'P3', 'P2', 'P1'] },
+                    // K row
+                    { label: 'K Row', rooms: ['K10', 'K9', 'K8', 'K7', 'K6', 'K5', 'K4', 'K3', 'K2', 'K1'] },
+                    // A block
+                    { label: 'A Block', rooms: ['A4', 'A3', 'A2', 'A1'] },
+                    // V block
+                    { label: 'V Block', rooms: ['V1', 'V2'] }
+                ];
+
+                roomLayout.forEach(section => {
+                    const sectionDiv = document.createElement('div');
+                    sectionDiv.classList.add('room-section', 'mb-3');
+                    sectionDiv.innerHTML = `<h5>${section.label}</h5>`;
+                    
+                    const roomRowDiv = document.createElement('div');
+                    roomRowDiv.classList.add('room-row');
+
+                    section.rooms.forEach(roomNumber => {
+                        const room = rooms.find(r => r.number === roomNumber);
+                        const statusInfo = room ? getStatusInfo(room.status) : getStatusInfo('unknown'); // Handle rooms not in data
+                        
+                        const roomBox = document.createElement('div');
+                        roomBox.classList.add('room-box', statusInfo.className);
+                        roomBox.setAttribute('data-room-number', roomNumber);
+                        roomBox.innerHTML = `
+                            <div>${roomNumber}</div>
+                            <small>${statusInfo.label}</small>
+                        `;
+                        // Update tooltip to include bed type and max guests
+                        roomBox.title = `ห้อง ${roomNumber}: ${statusInfo.label} (${room ? room.type : 'ไม่ระบุ'})\nเตียง: ${room ? room.beds : 'ไม่ระบุ'}\nพักได้: ${room ? room.maxGuests : 'ไม่ระบุ'} คน`;
+                        
+                        // Add click event to show room details (can be expanded to edit)
+                        roomBox.addEventListener('click', () => {
+                            if (room) {
+                                showAlert(`รายละเอียดห้อง ${room.number}:\nประเภท: ${room.type}\nราคา: ${room.price.toLocaleString()} บาท\nประเภทเตียง: ${room.beds}\nจำนวนผู้เข้าพักสูงสุด: ${room.maxGuests} คน\nสถานะ: ${statusInfo.label}`);
+                            } else {
+                                showAlert(`ไม่พบข้อมูลสำหรับห้อง ${roomNumber}`);
+                            }
+                        });
+
+                        roomRowDiv.appendChild(roomBox);
+                    });
+                    sectionDiv.appendChild(roomRowDiv);
+                    roomMapElement.appendChild(sectionDiv);
+                });
+            }
+
+
+            // -----------------------------------------------------
+            // 7. ข้อมูลลูกค้า (Customer Data)
+            // -----------------------------------------------------
+
+            const customerListElement = document.getElementById('customer-list');
+            const searchCustomerInput = document.getElementById('searchCustomer');
+
+            function renderCustomerData() {
+                bookings = getData(BOOKING_STORAGE_KEY); // Get latest data
+                const searchTerm = searchCustomerInput.value.toLowerCase();
+
+                const filteredCustomers = bookings.filter(booking => 
+                    (booking.status === 'checked-in' || booking.status === 'checked-out' || booking.status === 'cancelled') &&
+                    (booking.id.toLowerCase().includes(searchTerm) || booking.customerName.toLowerCase().includes(searchTerm))
+                );
+
+                customerListElement.innerHTML = '';
+
+                if (filteredCustomers.length === 0) {
+                    customerListElement.innerHTML = `<tr><td colspan="9" class="text-center">ไม่พบข้อมูลลูกค้า</td></tr>`; 
+                    return;
+                }
+
+                filteredCustomers.forEach(booking => {
+                    const statusInfo = getStatusInfo(booking.status === 'checked-in' ? 'occupied' : booking.status); // Use occupied for checked-in for consistent color
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${booking.id}</td>
+                        <td>${booking.customerName}</td>
+                        <td>${booking.customerEmail || '-'}</td>
+                        <td>${booking.roomNumber}</td>
+                        <td>${booking.checkInDate}</td>
+                        <td>${booking.checkOutDate}</td>
+                        <td>${booking.paymentMethod === 'cash' ? 'เงินสด' : booking.paymentMethod === 'card' ? 'บัตร' : '-'}</td>
+                        <td>${booking.totalAmount ? booking.totalAmount.toLocaleString() + ' บาท' : '-'}</td>
+                        <td><span class="status-pill ${statusInfo.className}">${statusInfo.label}</span></td>
+                    `;
+                    customerListElement.appendChild(row);
+                });
+            }
+
+            // Search functionality for customer data
+            searchCustomerInput.addEventListener('keyup', renderCustomerData);
+            document.getElementById('clearSearchCustomer').addEventListener('click', () => {
+                searchCustomerInput.value = '';
+                renderCustomerData();
+            });
+
+            // -----------------------------------------------------
+            // 8. ตั้งค่าระบบ (System Settings) - User Management
+            // -----------------------------------------------------
+            const userListElement = document.getElementById('user-list');
+            const userModal = new bootstrap.Modal(document.getElementById('userModal'));
+            const userForm = document.getElementById('userForm');
+            const saveUserButton = document.getElementById('saveUserButton');
+            const addUserBtn = document.getElementById('addUserBtn');
+            const searchUserInput = document.getElementById('searchUser');
+
+            function renderUserList() {
+                // Only allow admin to view/manage users
+                if (currentUser && currentUser.role !== 'admin') {
+                    userListElement.innerHTML = `<tr><td colspan="4" class="text-center text-danger">คุณไม่มีสิทธิ์เข้าถึงส่วนนี้</td></tr>`;
+                    return;
+                }
+
+                users = getData(USERS_STORAGE_KEY);
+                const searchTerm = searchUserInput.value.toLowerCase();
+                const filteredUsers = users.filter(user => 
+                    user.username.toLowerCase().includes(searchTerm) ||
+                    user.role.toLowerCase().includes(searchTerm)
+                );
+
+                userListElement.innerHTML = '';
+
+                if (filteredUsers.length === 0) {
+                    userListElement.innerHTML = `<tr><td colspan="4" class="text-center">ไม่พบผู้ใช้ที่ตรงกับคำค้นหา</td></tr>`;
+                    return;
+                }
+
+                filteredUsers.forEach(user => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${user.username}</td>
+                        <td>${user.password ? '********' : '-'}</td> <!-- Mask password -->
+                        <td>${user.role === 'admin' ? 'แอดมิน' : 'พนักงาน'}</td>
+                        <td>
+                            <button class="btn btn-sm btn-warning edit-user me-1" data-username="${user.username}">
+                                <i class="fas fa-edit"></i> แก้ไข
+                            </button>
+                            <button class="btn btn-sm btn-danger delete-user" data-username="${user.username}">
+                                <i class="fas fa-trash"></i> ลบ
+                            </button>
+                        </td>
+                    `;
+                    userListElement.appendChild(row);
+                });
+
+                document.querySelectorAll('.edit-user').forEach(button => {
+                    button.addEventListener('click', editUser);
+                });
+                document.querySelectorAll('.delete-user').forEach(button => {
+                    button.addEventListener('click', deleteUser);
+                });
+            }
+
+            addUserBtn.addEventListener('click', () => {
+                // Only allow admin to add users
+                if (currentUser && currentUser.role !== 'admin') {
+                    showAlert('คุณไม่มีสิทธิ์ในการเพิ่มผู้ใช้ใหม่');
+                    return;
+                }
+                userForm.reset();
+                document.getElementById('originalUsername').value = ''; // Clear for new user
+                document.getElementById('newPassword').required = true; // Password is required for new user
+                document.getElementById('userModalLabel').textContent = 'เพิ่มผู้ใช้ใหม่';
+                userModal.show();
+            });
+
+            async function editUser(e) {
+                // Only allow admin to edit users
+                if (currentUser && currentUser.role !== 'admin') {
+                    showAlert('คุณไม่มีสิทธิ์ในการแก้ไขผู้ใช้');
+                    return;
+                }
+
+                const usernameToEdit = e.currentTarget.getAttribute('data-username');
+                const user = users.find(u => u.username === usernameToEdit);
+
+                if (user) {
+                    document.getElementById('userModalLabel').textContent = 'แก้ไขผู้ใช้';
+                    document.getElementById('originalUsername').value = user.username;
+                    document.getElementById('newUsername').value = user.username;
+                    document.getElementById('newPassword').value = ''; // Clear password field for security
+                    document.getElementById('newPassword').required = false; // Password is not required for edit
+                    document.getElementById('userRole').value = user.role;
+                    userModal.show();
+                }
+            }
+
+            async function deleteUser(e) {
+                // Only allow admin to delete users
+                if (currentUser && currentUser.role !== 'admin') {
+                    showAlert('คุณไม่มีสิทธิ์ในการลบผู้ใช้');
+                    return;
+                }
+
+                const usernameToDelete = e.currentTarget.getAttribute('data-username');
+
+                // Prevent admin from deleting themselves
+                if (currentUser && currentUser.username === usernameToDelete) {
+                    showAlert('คุณไม่สามารถลบบัญชีผู้ใช้ของคุณเองได้');
+                    return;
+                }
+
+                const confirmed = await showConfirm(`ยืนยันการลบผู้ใช้ "${usernameToDelete}"? การดำเนินการนี้ไม่สามารถย้อนกลับได้`);
+                if (!confirmed) return;
+
+                users = users.filter(user => user.username !== usernameToDelete);
+                saveData(USERS_STORAGE_KEY, users);
+                renderUserList();
+            }
+
+            saveUserButton.addEventListener('click', () => {
+                // Only allow admin to save user changes
+                if (currentUser && currentUser.role !== 'admin') {
+                    showAlert('คุณไม่มีสิทธิ์ในการบันทึกข้อมูลผู้ใช้');
+                    return;
+                }
+
+                const originalUsername = document.getElementById('originalUsername').value;
+                const newUsername = document.getElementById('newUsername').value.trim();
+                const newPassword = document.getElementById('newPassword').value.trim();
+                const userRole = document.getElementById('userRole').value;
+
+                if (!newUsername) {
+                    showAlert('กรุณากรอกชื่อผู้ใช้');
+                    return;
+                }
+
+                if (!originalUsername && !newPassword) { // If adding new user and password is empty
+                    showAlert('กรุณากรอกรหัสผ่านสำหรับผู้ใช้ใหม่');
+                    return;
+                }
+
+                if (originalUsername) {
+                    // Editing existing user
+                    const userIndex = users.findIndex(u => u.username === originalUsername);
+                    if (userIndex !== -1) {
+                        // Check if new username conflicts with another existing user (if username changed)
+                        if (newUsername !== originalUsername && users.some(u => u.username === newUsername)) {
+                            showAlert('ชื่อผู้ใช้นี้มีอยู่แล้ว กรุณาใช้ชื่อผู้ใช้อื่น');
+                            return;
+                        }
+                        users[userIndex].username = newUsername;
+                        if (newPassword) { // Only update password if provided
+                            users[userIndex].password = newPassword;
+                        }
+                        users[userIndex].role = userRole;
+                    }
+                } else {
+                    // Adding new user
+                    if (users.some(u => u.username === newUsername)) {
+                        showAlert('ชื่อผู้ใช้นี้มีอยู่แล้ว กรุณาใช้ชื่อผู้ใช้อื่น');
+                        return;
+                    }
+                    users.push({ username: newUsername, password: newPassword, role: userRole });
+                }
+
+                saveData(USERS_STORAGE_KEY, users);
+                userModal.hide();
+                renderUserList();
+            });
+
+            searchUserInput.addEventListener('keyup', renderUserList);
+
+            // -----------------------------------------------------
+            // 9. Booking Calendar Logic
+            // -----------------------------------------------------
+
+            const bookingCalendarView = document.getElementById('booking-calendar-view');
+            const DAY_CELL_WIDTH = 80; // Must match CSS .date-cell width
+            const ROOM_LABEL_WIDTH = 120; // Must match CSS .room-label width
+
+            // Helper function to get a random distinct color
+            function getRandomColor() {
+                const hue = Math.floor(Math.random() * 360);
+                const saturation = Math.floor(Math.random() * 30) + 70; // 70-100% saturation
+                const lightness = Math.floor(Math.random() * 20) + 40; // 40-60% lightness
+                return `hsl(${hue}, ${saturation}%, ${lightness}%)`;
+            }
+
+            function renderBookingCalendar() {
+                rooms = getData(ROOM_STORAGE_KEY).sort((a, b) => a.number.localeCompare(b.number)); // Sort rooms for consistent display
+                bookings = getData(BOOKING_STORAGE_KEY);
+
+                bookingCalendarView.innerHTML = ''; // Clear previous calendar
+
+                const today = new Date();
+                const currentMonth = today.getMonth();
+                const currentYear = today.getFullYear();
+
+                const dates = [];
+                // Loop from 1st of the current month up to 31 (or end of month)
+                for (let i = 1; i <= 31; i++) {
+                    const date = new Date(currentYear, currentMonth, i);
+                    // Stop if we've gone into the next month (e.g., Feb 29 for non-leap year, or April 31)
+                    if (date.getMonth() !== currentMonth) {
+                        break;
+                    }
+                    dates.push(date);
+                }
+
+                // Create calendar header (dates)
+                const headerRow = document.createElement('div');
+                headerRow.classList.add('calendar-header');
+                headerRow.innerHTML = `<div class="room-label-placeholder"></div>`; // Placeholder for room labels
+                dates.forEach(date => {
+                    const dateCell = document.createElement('div');
+                    dateCell.classList.add('date-cell');
+                    dateCell.innerHTML = `<div>${date.getDate()}</div><small>${date.toLocaleString('th-TH', { month: 'short' })}</small>`;
+                    headerRow.appendChild(dateCell);
+                });
+                bookingCalendarView.appendChild(headerRow);
+
+                // Create calendar rows (rooms)
+                rooms.forEach(room => {
+                    const roomRow = document.createElement('div');
+                    roomRow.classList.add('calendar-row');
+                    roomRow.style.position = 'relative'; // For positioning booking bars
+
+                    const roomLabel = document.createElement('div');
+                    roomLabel.classList.add('room-label');
+                    roomLabel.textContent = room.number;
+                    roomRow.appendChild(roomLabel);
+
+                    // Create empty cells for each day
+                    dates.forEach(date => {
+                        const dateCell = document.createElement('div');
+                        dateCell.classList.add('date-cell');
+                        roomRow.appendChild(dateCell);
+                    });
+
+                    // Place booking bars
+                    bookings.forEach(booking => {
+                        // Only show active bookings (booked, checked-in)
+                        if (booking.roomNumber === room.number && (booking.status === 'booked' || booking.status === 'checked-in')) {
+                            const checkIn = new Date(booking.checkInDate);
+                            checkIn.setHours(0, 0, 0, 0);
+                            const checkOut = new Date(booking.checkOutDate);
+                            checkOut.setHours(0, 0, 0, 0);
+
+                            // Determine the start and end index of the booking within the displayed dates
+                            let startIndex = -1;
+                            let endIndex = -1;
+
+                            for (let i = 0; i < dates.length; i++) {
+                                // Check if the booking's check-in date matches a calendar date
+                                if (dates[i].getTime() === checkIn.getTime()) {
+                                    startIndex = i;
+                                }
+                                // Check if the booking's check-out date matches a calendar date
+                                if (dates[i].getTime() === checkOut.getTime()) {
+                                    endIndex = i;
+                                }
+                            }
+
+                            // Adjust start and end index if booking extends beyond calendar view
+                            const calendarStartDate = dates[0];
+                            const calendarEndDate = dates[dates.length - 1];
+
+                            // If booking starts before the calendar view, set startIndex to 0
+                            if (checkIn < calendarStartDate) {
+                                startIndex = 0;
+                            } else if (startIndex === -1) { 
+                                // Booking starts within the month but not on a displayed day (e.g., if calendar starts mid-month)
+                                // Find the first day in the calendar that is on or after checkIn
+                                for (let i = 0; i < dates.length; i++) {
+                                    if (dates[i] >= checkIn) {
+                                        startIndex = i;
+                                        break;
+                                    }
+                                }
+                                if (startIndex === -1) return; // Booking is entirely before the displayed calendar
+                            }
+
+                            // If booking ends after the calendar view, set endIndex to the last day
+                            if (checkOut > calendarEndDate) {
+                                endIndex = dates.length; // Span to the end of the calendar (exclusive of the last day)
+                            } else if (endIndex === -1) { 
+                                // Booking ends within the month but not on a displayed day
+                                // Find the first day in the calendar that is on or after checkOut
+                                for (let i = 0; i < dates.length; i++) {
+                                    if (dates[i] >= checkOut) {
+                                        endIndex = i;
+                                        break;
+                                    }
+                                }
+                                if (endIndex === -1) return; // Booking is entirely after the displayed calendar
+                            }
+                            
+                            // If the booking spans across the displayed calendar
+                            // Check for overlap: (startA < endB) && (endA > startB)
+                            const bookingStartsBeforeCalendarEnds = checkIn < new Date(calendarEndDate.getTime() + 86400000); // +1 day to include the last day
+                            const bookingEndsAfterCalendarStarts = checkOut > calendarStartDate;
+
+                            if (!(bookingStartsBeforeCalendarEnds && bookingEndsAfterCalendarStarts)) {
+                                return; // No overlap with the current calendar view
+                            }
+
+                            // Calculate the width of the bar
+                            const barWidth = (endIndex - startIndex) * DAY_CELL_WIDTH;
+                            
+                            // Calculate the left position of the bar
+                            const barLeft = startIndex * DAY_CELL_WIDTH + ROOM_LABEL_WIDTH;
+
+                            // Ensure booking has a color, assign if missing
+                            if (!booking.color) {
+                                booking.color = getRandomColor();
+                                saveData(BOOKING_STORAGE_KEY, bookings); // Save updated booking with color
+                            }
+
+                            const bookingBar = document.createElement('div');
+                            bookingBar.classList.add('booking-bar');
+                            bookingBar.style.width = `${barWidth}px`;
+                            bookingBar.style.left = `${barLeft}px`;
+                            bookingBar.style.backgroundColor = booking.color;
+                            bookingBar.textContent = booking.customerName;
+                            bookingBar.setAttribute('data-booking-id', booking.id);
+                            bookingBar.title = `การจอง: ${booking.id}\nลูกค้า: ${booking.customerName}\nเช็คอิน: ${booking.checkInDate}\nเช็คเอาท์: ${booking.checkOutDate}`;
+
+                            bookingBar.addEventListener('click', () => showBookingDetailsModal(booking.id));
+                            roomRow.appendChild(bookingBar);
+                        }
+                    });
+
+                    bookingCalendarView.appendChild(roomRow);
+                });
+            }
+
+            // Show booking details in a modal
+            function showBookingDetailsModal(bookingId) {
+                const booking = bookings.find(b => b.id === bookingId);
+                if (!booking) {
+                    bookingDetailsContent.innerHTML = '<p class="text-danger">ไม่พบข้อมูลการจอง</p>';
+                    bookingDetailsModal.show();
+                    return;
+                }
+
+                const room = rooms.find(r => r.number === booking.roomNumber);
+                const roomPrice = room ? room.price.toLocaleString() : 'N/A';
+                const roomType = room ? room.type : 'N/A';
+                const roomBeds = room ? room.beds : 'N/A';
+                const roomMaxGuests = room ? room.maxGuests : 'N/A';
+
+                bookingDetailsContent.innerHTML = `
+                    <p><strong>ID การจอง:</strong> ${booking.id}</p>
+                    <p><strong>ชื่อลูกค้า:</strong> ${booking.customerName}</p>
+                    <p><strong>อีเมล์ลูกค้า:</strong> ${booking.customerEmail || '-'}</p>
+                    <p><strong>จำนวนผู้เข้าพัก:</strong> ผู้ใหญ่ ${booking.adults}, เด็ก ${booking.children}, ทารก ${booking.infants}</p>
+                    <p><strong>ห้องพัก:</strong> ${booking.roomNumber} (${roomType})</p>
+                    <p><strong>ประเภทเตียง:</strong> ${roomBeds}</p>
+                    <p><strong>จำนวนผู้เข้าพักสูงสุดของห้อง:</strong> ${roomMaxGuests} คน</p>
+                    <p><strong>ราคาห้อง (ต่อคืน):</strong> ${roomPrice} บาท</p>
+                    <p><strong>วันเช็คอิน:</strong> ${booking.checkInDate}</p>
+                    <p><strong>วันเช็คเอาท์:</b> ${booking.checkOutDate}</p>
+                    <p><strong>สถานะ:</strong> <span class="status-pill ${getStatusInfo(booking.status).className}">${getStatusInfo(booking.status).label}</span></p>
+                    <p><strong>หมายเลขบิล:</strong> ${booking.billNumber || '-'}</p>
+                    <p><strong>วิธีการชำระเงิน:</strong> ${booking.paymentMethod === 'cash' ? 'เงินสด' : booking.paymentMethod === 'card' ? 'บัตรเครดิต/เดบิต' : '-'}</p>
+                    <p><strong>ยอดรวมทั้งหมด:</strong> ${booking.totalAmount ? booking.totalAmount.toLocaleString() + ' บาท' : '-'}</p>
+                `;
+                bookingDetailsModal.show();
+            }
+
+
+            // -----------------------------------------------------
+            // Initial render on page load
+            // -----------------------------------------------------
+            // No initial render here, it will be handled by the login logic
+        });
+    </script>
+</body>
+</html>
